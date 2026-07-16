@@ -2,11 +2,35 @@ import streamlit as st
 import pandas as pd
 from weasyprint import HTML
 import io
+import re
 
 st.set_page_config(page_title="Holiday Energy Request Generator", layout="wide")
 
 st.title("📊 เว็บไซต์แปลงข้อมูล Holiday Energy Request")
 st.write("อัปโหลดไฟล์ Excel ดิบเพื่อแปลงเป็นตารางสรุปแผนงานประจำสัปดาห์ (วันเสาร์-อาทิตย์) ในรูปแบบ PDF ได้ทันที")
+
+# ฟังก์ชันพิเศษสำหรับย้อมสีข้อความตาม Keyword
+def highlight_keywords(text):
+    if not isinstance(text, str) or text == 'X':
+        return text
+        
+    lines = text.split('<br>')
+    highlighted_lines = []
+    
+    for line in lines:
+        # 1. ไฮไลต์คำว่า น้ำประปา 500 TON (สีน้ำเงินเข้ม ตัวใหญ่ หนา)
+        if "น้ำประปา" in line or "500 TON" in line:
+            line = f"<span style='color: #002060; font-weight: bold; font-size: 13pt; display: block; margin-top: 4px;'>{line}</span>"
+        # 2. ไฮไลต์คำสั่งทำความสะอาดพิเศษ / อุ่นน้ำยา (สีส้ม/น้ำตาล ตัวหนา)
+        elif "อุ่นน้ำยา" in line or "**" in line or "Main paint" in line:
+            line = f"<span style='color: #c65911; font-weight: bold;'>{line}</span>"
+        # 3. ไฮไลต์งานทำความสะอาดภาษาไทยทั่วไป (สีน้ำเงิน ตัวหนา)
+        elif "งานทำความสะอาด" in line or "ล้าง" in line or "ทำความสะอาด" in line:
+            line = f"<span style='color: #0070c0; font-weight: bold;'>{line}</span>"
+            
+        highlighted_lines.append(line)
+        
+    return '<br>'.join(highlighted_lines)
 
 def process_excel(file):
     df = pd.read_excel(file)
@@ -25,7 +49,9 @@ def process_excel(file):
         sat_date = all_dates[0]
         sun_date = all_dates[1]
         
+    # จัดการคลีนชื่อ Shop และยุบรวมกลุ่ม FR, KD เข้าด้วยกันตามรูปที่ 2
     df['SHOP_CLEAN'] = df['PERMIT_LOCATION_NAME'].str.replace(' shop', '', case=False).str.strip()
+    df['SHOP_CLEAN'] = df['SHOP_CLEAN'].replace({'FR': 'FR, KD', 'KD': 'FR, KD'})
     
     df['FORMATTED_TASK'] = df.apply(lambda r: f"-{r['PERMIT_NAME']} : {r['REQ_SECTION_CODE']}", axis=1)
     
@@ -38,6 +64,7 @@ def process_excel(file):
     sun_grouped = df[sun_mask].groupby('SHOP_CLEAN')['FORMATTED_TASK'].apply(lambda x: '<br>'.join(x)).reset_index()
     sun_grouped.columns = ['Shop', 'Sun_Tasks']
     
+    # เรียงลำดับแถวตามรูปต้นฉบับเป๊ะๆ
     shop_list = ['Paint', 'Body', 'Frame', 'LA', 'UA', 'PT7-8', 'FR, KD']
     all_shops = pd.DataFrame({'Shop': shop_list})
     
@@ -46,6 +73,10 @@ def process_excel(file):
     
     summary['Sat_Tasks'] = summary['Sat_Tasks'].fillna('X')
     summary['Sun_Tasks'] = summary['Sun_Tasks'].fillna('X')
+    
+    # ส่งข้อความไปผ่านตัวกรองสีสัน
+    summary['Sat_Tasks'] = summary['Sat_Tasks'].apply(highlight_keywords)
+    summary['Sun_Tasks'] = summary['Sun_Tasks'].apply(highlight_keywords)
     
     return summary, sat_date, sun_date
 
@@ -61,19 +92,18 @@ def generate_pdf_html(summary_df, sat_date, sun_date):
         sat = row['Sat_Tasks']
         sun = row['Sun_Tasks']
         
-        # ปรับสีให้เป็นโทนพาสเทลตามรูปต้นฉบับ
-        sat_style = 'background-color: #c5eff7; color: #000000;' if sat != 'X' else 'background-color: #f5c6cb; color: #000000; text-align: center; font-weight: bold; font-size: 14pt;'
-        sun_style = 'background-color: #d4edda; color: #000000;' if sun != 'X' else 'background-color: #f5c6cb; color: #000000; text-align: center; font-weight: bold; font-size: 14pt;'
+        sat_style = 'background-color: #c5eff7; color: #000000;' if sat != 'X' else 'background-color: #f5c6cb; color: #cc0000; text-align: center; font-weight: bold; font-size: 14pt;'
+        sun_style = 'background-color: #d4edda; color: #000000;' if sun != 'X' else 'background-color: #f5c6cb; color: #cc0000; text-align: center; font-weight: bold; font-size: 14pt;'
         
-        sat_content = sat if sat == 'X' else f"<div style='text-align:center;font-weight:bold;margin-bottom:5px;'>O<br>(08.00-16:30 น.)</div>{sat}"
-        sun_content = sun if sun == 'X' else f"<div style='text-align:center;font-weight:bold;margin-bottom:5px;'>O<br>(08.00-16:30 น.)</div>{sun}"
+        sat_content = sat if sat == 'X' else f"<div style='text-align:center;color:#000;font-weight:bold;margin-bottom:5px;'>O<br><span style='font-size:9pt;font-weight:normal;'>(08.00-16:30 น.)</span></div>{sat}"
+        sun_content = sun if sun == 'X' else f"<div style='text-align:center;color:#000;font-weight:bold;margin-bottom:5px;'>O<br><span style='font-size:9pt;font-weight:normal;'>(08.00-16:30 น.)</span></div>{sun}"
         
         rows_html += f'''
         <tr>
             <td style="text-align: center; width: 5%; font-weight: bold;">{no}</td>
             <td style="text-align: center; font-weight: bold; width: 10%;">{shop}</td>
-            <td style="{sat_style} width: 42.5%; padding: 8px; vertical-align: top; font-size: 11pt;">{sat_content}</td>
-            <td style="{sun_style} width: 42.5%; padding: 8px; vertical-align: top; font-size: 11pt;">{sun_content}</td>
+            <td style="{sat_style} width: 42.5%; padding: 8px; vertical-align: top; font-size: 10pt;">{sat_content}</td>
+            <td style="{sun_style} width: 42.5%; padding: 8px; vertical-align: top; font-size: 10pt;">{sun_content}</td>
         </tr>
         '''
         
@@ -83,20 +113,14 @@ def generate_pdf_html(summary_df, sat_date, sun_date):
     <head>
         <meta charset="utf-8">
         <style>
-            /* ดึงฟอนต์ภาษาไทย Sarabun มาใช้ในระบบ PDF */
             @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
-            
-            @page {{ size: A4 portrait; margin: 15mm 12mm; }}
-            body {{ 
-                font-family: 'Sarabun', sans-serif; 
-                color: #000;
-                margin: 0;
-            }}
-            .header {{ font-size: 18pt; font-weight: bold; margin-bottom: 15px; }}
+            @page {{ size: A4 portrait; margin: 12mm 10mm; }}
+            body {{ font-family: 'Sarabun', sans-serif; color: #000; margin: 0; }}
+            .header {{ font-size: 16pt; font-weight: bold; margin-bottom: 12px; font-family: Arial, sans-serif; }}
             table {{ width: 100%; border-collapse: collapse; }}
-            th, td {{ border: 1px solid #000000; padding: 8px; line-height: 1.4; }}
-            .bg-yellow {{ background-color: #fff3cd; font-weight: bold; text-align: center; }}
-            thead th {{ text-align: center; font-size: 12pt; }}
+            th, td {{ border: 1px solid #000000; padding: 6px; line-height: 1.3; }}
+            .bg-yellow {{ background-color: #fff3cd; font-weight: bold; text-align: center; font-family: Arial, sans-serif; }}
+            thead th {{ text-align: center; font-size: 11pt; }}
         </style>
     </head>
     <body>
@@ -127,10 +151,8 @@ if uploaded_file is not None:
         summary_table, sat_d, sun_d = process_excel(uploaded_file)
         st.success("ประมวลผลข้อมูลสำเร็จ!")
         
-        display_df = summary_table.copy()
-        display_df['Sat_Tasks'] = display_df['Sat_Tasks'].str.replace('<br>', '\n')
-        display_df['Sun_Tasks'] = display_df['Sun_Tasks'].str.replace('<br>', '\n')
-        st.dataframe(display_df, use_container_width=True)
+        # ปรับการแสดงผลหน้าเว็บเพื่อความง่าย
+        st.dataframe(summary_table, use_container_width=True)
         
         html_string = generate_pdf_html(summary_table, sat_d, sun_d)
         pdf_filename = f"Holiday_Energy_Request_{sat_d.strftime('%d-%b')}.pdf"
@@ -139,7 +161,7 @@ if uploaded_file is not None:
         HTML(string=html_string).write_pdf(pdf_buffer)
         
         st.download_button(
-            label="📥 ดาวน์โหลดรายงานแบบ PDF (หน้าตาเหมือนรูปที่ 2)",
+            label="📥 ดาวน์โหลดรายงานแบบ PDF (เวอร์ชันปรับปรุงสีสันตามรูปที่ 2)",
             data=pdf_buffer.getvalue(),
             file_name=pdf_filename,
             mime="application/pdf"
