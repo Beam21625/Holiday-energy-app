@@ -15,7 +15,6 @@ def process_excel(file):
     df['PERMIT_DATE_FROM'] = pd.to_datetime(df['PERMIT_DATE_FROM'], format='mixed')
     df['PERMIT_DATE_TO'] = pd.to_datetime(df['PERMIT_DATE_TO'], format='mixed')
     
-    # ดึงวันเสาร์และอาทิตย์หลักของข้อมูลในไฟล์อัตโนมัติ
     all_dates = pd.concat([df['PERMIT_DATE_FROM'].dt.date, df['PERMIT_DATE_TO'].dt.date]).unique()
     all_dates = sorted([d for d in all_dates if d.weekday() in [5, 6]])
     
@@ -62,18 +61,19 @@ def generate_pdf_html(summary_df, sat_date, sun_date):
         sat = row['Sat_Tasks']
         sun = row['Sun_Tasks']
         
-        sat_style = 'background-color: #e6f7ff; color: #004d80;' if sat != 'X' else 'background-color: #ffcccc; color: #cc0000; text-align: center; font-weight: bold;'
-        sun_style = 'background-color: #f6ffed; color: #274e13;' if sun != 'X' else 'background-color: #ffcccc; color: #cc0000; text-align: center; font-weight: bold;'
+        # ปรับสีให้เป็นโทนพาสเทลตามรูปต้นฉบับ
+        sat_style = 'background-color: #c5eff7; color: #000000;' if sat != 'X' else 'background-color: #f5c6cb; color: #000000; text-align: center; font-weight: bold; font-size: 14pt;'
+        sun_style = 'background-color: #d4edda; color: #000000;' if sun != 'X' else 'background-color: #f5c6cb; color: #000000; text-align: center; font-weight: bold; font-size: 14pt;'
         
         sat_content = sat if sat == 'X' else f"<div style='text-align:center;font-weight:bold;margin-bottom:5px;'>O<br>(08.00-16:30 น.)</div>{sat}"
         sun_content = sun if sun == 'X' else f"<div style='text-align:center;font-weight:bold;margin-bottom:5px;'>O<br>(08.00-16:30 น.)</div>{sun}"
         
         rows_html += f'''
         <tr>
-            <td style="text-align: center; width: 5%;">{no}</td>
+            <td style="text-align: center; width: 5%; font-weight: bold;">{no}</td>
             <td style="text-align: center; font-weight: bold; width: 10%;">{shop}</td>
-            <td style="{sat_style} width: 42.5%; padding: 8px; vertical-align: top; font-size: 10pt;">{sat_content}</td>
-            <td style="{sun_style} width: 42.5%; padding: 8px; vertical-align: top; font-size: 10pt;">{sun_content}</td>
+            <td style="{sat_style} width: 42.5%; padding: 8px; vertical-align: top; font-size: 11pt;">{sat_content}</td>
+            <td style="{sun_style} width: 42.5%; padding: 8px; vertical-align: top; font-size: 11pt;">{sun_content}</td>
         </tr>
         '''
         
@@ -83,12 +83,20 @@ def generate_pdf_html(summary_df, sat_date, sun_date):
     <head>
         <meta charset="utf-8">
         <style>
+            /* ดึงฟอนต์ภาษาไทย Sarabun มาใช้ในระบบ PDF */
+            @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+            
             @page {{ size: A4 portrait; margin: 15mm 12mm; }}
-            body {{ font-family: Arial, sans-serif; color: #333; }}
-            .header {{ font-size: 16pt; font-weight: bold; margin-bottom: 15px; }}
+            body {{ 
+                font-family: 'Sarabun', sans-serif; 
+                color: #000;
+                margin: 0;
+            }}
+            .header {{ font-size: 18pt; font-weight: bold; margin-bottom: 15px; }}
             table {{ width: 100%; border-collapse: collapse; }}
-            th, td {{ border: 1px solid #333; padding: 6px; }}
-            .bg-yellow {{ background-color: #fffbe6; }}
+            th, td {{ border: 1px solid #000000; padding: 8px; line-height: 1.4; }}
+            .bg-yellow {{ background-color: #fff3cd; font-weight: bold; text-align: center; }}
+            thead th {{ text-align: center; font-size: 12pt; }}
         </style>
     </head>
     <body>
