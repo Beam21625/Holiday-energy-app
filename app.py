@@ -112,7 +112,7 @@ def generate_pdf_html(summary_df, sat_date, sun_date):
     </html>
     '''
 
-uploaded_file = st.file_uploader("เลือกไฟล์ตาราง Excel ดิบ (.xlsx)", type=["xlsx"])
+uploaded_file = st.file_uploader("เลือกไฟล์ Excel (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
     try:
@@ -131,7 +131,7 @@ if uploaded_file is not None:
         HTML(string=html_string).write_pdf(pdf_buffer)
         
         st.download_button(
-            label="📥 ดาวน์โหลดรายงานแบบ PDF (หน้าตาเหมือนรูปที่ 2)",
+            label="📥 ดาวน์โหลดรายงานแบบ PDF ",
             data=pdf_buffer.getvalue(),
             file_name=pdf_filename,
             mime="application/pdf"
