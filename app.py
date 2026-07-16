@@ -12,8 +12,8 @@ def process_excel(file):
     df = pd.read_excel(file)
     df.columns = df.columns.str.strip()
     
-    df['PERMIT_DATE_FROM'] = pd.to_datetime(df['PERMIT_DATE_FROM'])
-    df['PERMIT_DATE_TO'] = pd.to_datetime(df['PERMIT_DATE_TO'])
+    df['PERMIT_DATE_FROM'] = pd.to_datetime(df['PERMIT_DATE_FROM'], format='mixed')
+df['PERMIT_DATE_TO'] = pd.to_datetime(df['PERMIT_DATE_TO'], format='mixed')
     
     # ดึงวันเสาร์และอาทิตย์ที่เป็นกลุ่มหลักของข้อมูลในไฟล์อัตโนมัติ
     all_dates = pd.concat([df['PERMIT_DATE_FROM'].dt.date, df['PERMIT_DATE_TO'].dt.date]).unique()
