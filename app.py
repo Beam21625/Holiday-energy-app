@@ -15,7 +15,7 @@ def process_excel(file):
     df['PERMIT_DATE_FROM'] = pd.to_datetime(df['PERMIT_DATE_FROM'], format='mixed')
     df['PERMIT_DATE_TO'] = pd.to_datetime(df['PERMIT_DATE_TO'], format='mixed')
     
-    # ดึงวันเสาร์และอาทิตย์ที่เป็นกลุ่มหลักของข้อมูลในไฟล์อัตโนมัติ
+    # ดึงวันเสาร์และอาทิตย์หลักของข้อมูลในไฟล์อัตโนมัติ
     all_dates = pd.concat([df['PERMIT_DATE_FROM'].dt.date, df['PERMIT_DATE_TO'].dt.date]).unique()
     all_dates = sorted([d for d in all_dates if d.weekday() in [5, 6]])
     
@@ -112,7 +112,7 @@ def generate_pdf_html(summary_df, sat_date, sun_date):
     </html>
     '''
 
-uploaded_file = st.file_uploader("เลือกไฟล์ Excel (.xlsx)", type=["xlsx"])
+uploaded_file = st.file_uploader("เลือกไฟล์ตาราง Excel ดิบ (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
     try:
@@ -131,7 +131,7 @@ if uploaded_file is not None:
         HTML(string=html_string).write_pdf(pdf_buffer)
         
         st.download_button(
-            label="📥 ดาวน์โหลดรายงานแบบ PDF ",
+            label="📥 ดาวน์โหลดรายงานแบบ PDF (หน้าตาเหมือนรูปที่ 2)",
             data=pdf_buffer.getvalue(),
             file_name=pdf_filename,
             mime="application/pdf"
